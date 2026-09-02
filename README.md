@@ -31,7 +31,7 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 - 3 VLANs: 10 (Sales), 20 (IT), 30 (Finance)
 - Subnets: 192.168.10.0/26, 192.168.20.0/26, 192.168.30.0/26
 
-*[Insert topology diagram screenshot here]*
+  ![Topology Diagram](screenshots/topology.png)
 
 ### Design Decisions
 **SVI over router-on-a-stick:** chosen because a Layer 3 switch was available. SVI routes in hardware, avoids funneling all inter-VLAN traffic through a single physical link, and is simpler to manage than sub-interface encapsulation.
