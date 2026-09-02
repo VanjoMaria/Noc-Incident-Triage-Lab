@@ -115,9 +115,6 @@ Full ticket: [tickets/INC-002.md](tickets/INC-002.md)
   dhcp-verification.png
   ping-tests.png
   acl-config.png
-/configs
-  multilayer-switch-config.txt
-  access-switch-config.txt
 /tickets
   INC-001.md
   INC-002.md
