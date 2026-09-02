@@ -28,13 +28,20 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 ### Topology
 - 1 Layer 3 (multilayer) switch — SVI-based inter-VLAN routing
 - 1 Layer 2 access switch
-- 3 VLANs: 10 (Sales), 20 (IT), 30 (Finance)
-- Subnets: 192.168.10.0/26, 192.168.20.0/26, 192.168.30.0/26
+- 3 VLANs, each on a /26 subnet carved out of 12.4.2.0/24:
 
-  ![Topology Diagram](screenshots/topology.png)
+| VLAN | Department | Subnet | Usable Range | Gateway (SVI) |
+|---|---|---|---|---|
+| 10 | Sales | 12.4.2.0/26 | .1 – .62 | 12.4.2.62 |
+| 20 | IT | 12.4.2.64/26 | .65 – .126 | 12.4.2.126 |
+| 30 | Finance | 12.4.2.128/26 | .129 – .190 | 12.4.2.190 |
+
+![Topology Diagram](screenshots/topology.png)
 
 ### Design Decisions
 **SVI over router-on-a-stick:** chosen because a Layer 3 switch was available. SVI routes in hardware, avoids funneling all inter-VLAN traffic through a single physical link, and is simpler to manage than sub-interface encapsulation.
+
+**Gateway addressing:** each VLAN's gateway is set to the last usable address in its /26 block (e.g. 12.4.2.62 for Sales) rather than the more conventional first address (12.4.2.1) — a deliberate choice to reserve the low end of each block for other static infrastructure.
 
 ### Configuration Summary
 - Trunk link configured between access switch and multilayer switch, allowing VLANs 10, 20, 30
@@ -48,10 +55,10 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 | Field | Detail |
 |---|---|
 | Severity | Sev2 — degraded, single VLAN isolated |
-| Symptoms | Sales VLAN unable to reach gateway or any other VLAN |
+| Symptoms | Sales VLAN unable to reach gateway (12.4.2.62) or any other VLAN |
 | Diagnostic Steps | `show ip interface brief` confirmed SVI up/up → `show interfaces trunk` revealed VLAN 10 missing from allowed list on multilayer switch trunk port |
 | Root Cause | Trunk configured with `switchport trunk allowed vlan 20,30` — VLAN 10 omitted |
-| Resolution | Corrected to `switchport trunk allowed vlan 10,20,30` on both trunk ends; verified via ping |
+| Resolution | Corrected to `switchport trunk allowed vlan 10,20,30` on both ends of the trunk; verified via ping |
 | Prevention | Standardize a trunk provisioning checklist listing all active VLANs explicitly at setup time |
 
 *[Insert Simulation Mode screenshot showing packet failing to cross the trunk]*
@@ -59,11 +66,11 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 #### Incident INC-002: ACL Wildcard Mask Error Allowing Blocked Traffic
 | Field | Detail |
 |---|---|
-| Severity | Sev2 — security/compliance exposure, Sales and Finance able to communicate despite segmentation policy |
-| Symptoms | Ping tests Sales↔Finance unexpectedly succeeded |
+| Severity | Sev2 — security/compliance exposure, Sales and Finance VLANs able to communicate despite ACL segmentation policy |
+| Symptoms | Ping tests between Sales (12.4.2.0/26) and Finance (12.4.2.128/26) unexpectedly succeeded |
 | Diagnostic Steps | `show access-lists` showed match counts hitting `permit any any` instead of the deny lines → reviewed wildcard mask, found `0.0.0.64` instead of the correct `0.0.0.63` for a /26 subnet |
 | Root Cause | Incorrect wildcard mask only covered 2 addresses instead of the full 64-address /26 range, allowing most traffic to fall through to the permit line |
-| Resolution | Rebuilt ACL with corrected wildcard mask; verified Sales↔Finance blocked, IT↔both still permitted |
+| Resolution | Rebuilt ACL with corrected wildcard mask (`0.0.0.63`); verified Sales↔Finance blocked, IT↔both still permitted |
 | Prevention | Use the standard wildcard calculation (255 − subnet mask octet) for any non-/24 subnet; verify ACL match counters after initial deployment, not just config syntax |
 
 *[Insert `show access-lists` screenshot showing corrected match counts]*
