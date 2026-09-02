@@ -41,13 +41,22 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 ### Design Decisions
 **SVI over router-on-a-stick:** chosen because a Layer 3 switch was available. SVI routes in hardware, avoids funneling all inter-VLAN traffic through a single physical link, and is simpler to manage than sub-interface encapsulation.
 
-**Gateway addressing:** each VLAN's gateway is set to the last usable address in its /26 block (e.g. 12.4.2.62 for Sales) rather than the more conventional first address (12.4.2.1) — a deliberate choice to reserve the low end of each block for other static infrastructure.
+**Gateway addressing:** each VLAN's gateway uses a non-default address within its /26 block rather than the more conventional first address (e.g. 12.4.2.1). Not a deliberate design pattern — just how the lab was built — but worth noting that `.1` is the standard convention I'd default to in a production environment.
+
+### Configuration Verification
+| Evidence | Screenshot |
+|---|---|
+| All 3 SVIs up/up with correct IPs | `show ip int br` → [svi-status.png](screenshots/svi-status.png) |
+| Trunk carrying all 3 VLANs | `show int trunk` → [trunk-allowed-vlans.png](screenshots/trunk-allowed-vlans.png) |
+| Access ports correctly mapped to VLANs | `show vlan br` → [vlan-port-assignment.png](screenshots/vlan-port-assignment.png) |
+| DHCP assigning correct subnet/gateway per VLAN | `ipconfig` on PC0 → [dhcp-verification.png](screenshots/dhcp-verification.png) |
+| ACL actively blocking Sales↔Finance | ping test + `show access-lists` → [ping-tests.png](screenshots/ping-tests.png), [acl-config.png](screenshots/acl-config.png) |
 
 ### Configuration Summary
 - Trunk link configured between access switch and multilayer switch, allowing VLANs 10, 20, 30
 - SVIs configured per VLAN with `ip routing` enabled globally
 - DHCP: one pool per VLAN on the L3 switch, gateway IPs excluded from each pool
-- Extended ACL applied outbound on Sales and Finance VLAN interfaces, blocking Sales↔Finance while permitting all other traffic (including IT↔both)
+- Extended ACL `block-sales-finance` applied outbound on the Sales and Finance VLAN interfaces, blocking Sales↔Finance while permitting all other traffic (including IT↔both)
 
 ### Faults Found & Fixed
 
@@ -61,7 +70,7 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 | Resolution | Corrected to `switchport trunk allowed vlan 10,20,30` on both ends of the trunk; verified via ping |
 | Prevention | Standardize a trunk provisioning checklist listing all active VLANs explicitly at setup time |
 
-*[Insert Simulation Mode screenshot showing packet failing to cross the trunk]*
+Full ticket: [tickets/INC-001.md](tickets/INC-001.md)
 
 #### Incident INC-002: ACL Wildcard Mask Error Allowing Blocked Traffic
 | Field | Detail |
@@ -70,17 +79,17 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 | Symptoms | Ping tests between Sales (12.4.2.0/26) and Finance (12.4.2.128/26) unexpectedly succeeded |
 | Diagnostic Steps | `show access-lists` showed match counts hitting `permit any any` instead of the deny lines → reviewed wildcard mask, found `0.0.0.64` instead of the correct `0.0.0.63` for a /26 subnet |
 | Root Cause | Incorrect wildcard mask only covered 2 addresses instead of the full 64-address /26 range, allowing most traffic to fall through to the permit line |
-| Resolution | Rebuilt ACL with corrected wildcard mask (`0.0.0.63`); verified Sales↔Finance blocked, IT↔both still permitted |
+| Resolution | Rebuilt ACL with corrected wildcard mask (`0.0.0.63`); verified fix via `show access-lists`, now showing 8 and 4 matches on the two deny lines respectively, with only 3 unrelated matches on permit |
 | Prevention | Use the standard wildcard calculation (255 − subnet mask octet) for any non-/24 subnet; verify ACL match counters after initial deployment, not just config syntax |
 
-*[Insert `show access-lists` screenshot showing corrected match counts]*
+Full ticket: [tickets/INC-002.md](tickets/INC-002.md)
 
 ### Verification Checklist
 - [x] Each PC receives correct IP via DHCP for its VLAN
 - [x] PCs within same VLAN can ping each other
 - [x] IT can ping Sales and Finance
-- [x] Sales cannot ping Finance (and vice versa)
-- [x] Both faults diagnosed, fixed, and documented
+- [x] Sales cannot ping Finance (and vice versa) — confirmed via `Destination host unreachable` from ACL enforcement
+- [x] Both faults diagnosed, fixed, and verified with match-count evidence
 
 ---
 
@@ -98,8 +107,19 @@ A small office with 3 departments — Sales, IT, and Finance — each requiring 
 
 ## Repo Structure
 ```
-/screenshots       — topology diagrams, Simulation Mode captures, config verification
-/configs           — exported device configs
-/tickets           — full incident tickets (markdown)
+/screenshots
+  topology.png
+  svi-status.png
+  trunk-allowed-vlans.png
+  vlan-port-assignment.png
+  dhcp-verification.png
+  ping-tests.png
+  acl-config.png
+/configs
+  multilayer-switch-config.txt
+  access-switch-config.txt
+/tickets
+  INC-001.md
+  INC-002.md
 README.md
 ```
