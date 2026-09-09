@@ -188,6 +188,7 @@ To eliminate single points of failure, the office network expanded to a 3-switch
   dhcp-verification.png
   ping-tests.png
   acl-config.png
+  topology2.png
   stp-default-root.png
   stp-priority-change.png
   ospf-neighbors.png
