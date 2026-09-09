@@ -109,6 +109,8 @@ The office network expanded to a 3-switch redundant triangle at Site A, connecte
 | Router4 ↔ Router1 | 10.254.1.4/30 |
 | Router1 ↔ Router3 | 10.254.1.8/30 |
 
+![Topology Diagram](screenshots/topology2.png)
+
 ### Design Decisions
 **Full router mesh over a single WAN link:** not strictly required by the base lab, but built this way so OSPF has a real backup path to reroute over, not just a second interface.
 
