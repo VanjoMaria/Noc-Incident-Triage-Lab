@@ -93,9 +93,16 @@ Full ticket: [tickets/INC-002.md](tickets/INC-002.md)
 
 ---
 
-## Lab 2: Redundant Network — STP, OSPF, Failover *(in progress)*
+## Lab 2: Redundant Network — STP, OSPF,Loop Prevention & Link Failover 
 
-## Lab 3: Multi-Site WAN — NAT, ACLs, Zabbix Monitoring *(planned)*
+### Scenario
+To eliminate single points of failure, the office network expanded to a 3-switch redundant core/access triangle connected to a secondary site via a dual-router OSPF WAN backbone. The goal is to enforce loop-free Layer 2 topology while enabling dynamic Layer 3 routing and verifying sub-second to low-second failover behavior.
+
+
+
+
+
+
 
 ## Lab 4: Full Incident Response Simulation *(planned)*
 
@@ -103,7 +110,7 @@ Full ticket: [tickets/INC-002.md](tickets/INC-002.md)
 
 ## Tools Used
 - Cisco Packet Tracer
-- Zabbix *(Lab 3+)*
+- Zabbix *(Lab 4)*
 
 ## Repo Structure
 ```
