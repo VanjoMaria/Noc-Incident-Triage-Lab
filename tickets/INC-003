@@ -1,0 +1,39 @@
+# INC-003: Switch Link Failure — STP Reconvergence Around Blocked Port
+
+**Lab:** Lab 2 — STP-OSPF Redundancy Lab
+**Severity:** Sev3 — planned failover validation test, redundant path present
+**Status:** Resolved (link restored; convergence largely confirmed, see notes)
+
+| Field | Detail |
+|---|---|
+| Symptoms | None expected for end hosts. Switch4's root port (Fa0/1, direct link to Switch1) shut down deliberately to test failover. |
+| Diagnostic Steps | Baseline `show spanning-tree` confirmed Switch4's root port as Fa0/1, cost 19, root = Switch1 (priority 4096, manually set). After `shutdown` on Fa0/1: root cost jumped 19 → 38, and the previously-blocked alternate port (Fa0/2) moved to **Root LSN** (Listening) — STP re-selecting it as the new root port. |
+| Root Cause | N/A — deliberate fault injection to validate redundancy, not a misconfiguration. |
+| Resolution | Link restored (`no shutdown`) ~135 sec after the fault. At restoration, Fa0/1 was already reclaiming root port (LSN) and Fa0/2 had already reverted to **Altn BLK** — the expected state once the direct path returns. |
+| Time to Recover | Not directly confirmed with a captured "Fa0/2 = Root FWD" snapshot. Default timers put full convergence at ~30 sec (2×15 sec Forward Delay); the 135 sec fault-to-restore window exceeds that, so full Forwarding is inferred, not directly observed. |
+| Prevention | Default STP convergence (~30 sec) is too slow for production — recommend Rapid PVST+ (802.1w) for sub-second failover. Process fix: capture `show spanning-tree` immediately *before* restoring a failed link, not just after breaking it, to get the "recovered" state on record. |
+
+## Evidence
+
+**Baseline (Switch2, pre-fault):**
+```
+Root ID    Priority 4097   Address 00D0.BC64.A4B9 (Switch1)
+Fa0/2      Root FWD 19     128.2   P2p
+```
+
+**Fault (Switch4, mid-convergence):**
+```
+Switch(config)#int fa0/1
+Switch(config-if)#shutdown
+
+Root ID    Priority 4097   Cost 38   Port 2 (FastEthernet0/2)
+Fa0/2      Root LSN 19     128.2    P2p
+```
+
+**Restoration (Switch4):**
+```
+Switch(config-if)#no shutdown
+
+Fa0/1      Root LSN 19     128.1    P2p
+Fa0/2      Altn BLK 19     128.2    P2p
+```
