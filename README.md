@@ -93,12 +93,76 @@ Full ticket: [tickets/INC-002.md](tickets/INC-002.md)
 
 ---
 
-## Lab 2: Redundant Network — STP, OSPF,Loop Prevention & Link Failover 
+## Lab 2: Redundant Network — STP, OSPF, Loop Prevention & Link Failover
+
+### Scenario
+The office network expanded to a 3-switch redundant triangle at Site A, connected to Site B via a fully-meshed 3-router OSPF backbone. Goal: prove STP prevents a Layer 2 loop on redundant links, and that both STP and OSPF actually reroute traffic when a link fails — not just that they're configured.
+
+### Topology
+- 3 switches (Switch1, Switch2, Switch4) cabled in a physical triangle at Site A — 192.168.4.0/25
+- 3 routers fully meshed (Router4, Router1, Router3) — each pair directly connected, giving OSPF two paths between any two routers
+- 1 switch (Switch3) and 2 PCs at Site B — 192.168.4.128/25
+
+| Link | Subnet |
+|---|---|
+| Router4 ↔ Router3 | 10.254.1.0/30 |
+| Router4 ↔ Router1 | 10.254.1.4/30 |
+| Router1 ↔ Router3 | 10.254.1.8/30 |
+
+### Design Decisions
+**Full router mesh over a single WAN link:** not strictly required by the base lab, but built this way so OSPF has a real backup path to reroute over, not just a second interface.
+
+### Configuration Verification
+| Evidence | Screenshot |
+|---|---|
+| STP elects Switch2 as root at default priority (lowest MAC) | `show spanning-tree` → [stp-default-root.png](screenshots/stp-default-root.png) |
+| Manual root election via priority 4096 on Switch1 shifts root and blocked port | `show spanning-tree` → [stp-priority-change.png](screenshots/stp-priority-change.png) |
+| OSPF full adjacency on all 3 routers, incl. ECMP across the triangle | `show ip ospf neighbor` / `show ip route` → [ospf-neighbors.png](screenshots/ospf-neighbors.png) |
+
+### Configuration Summary
+- 3 switches cabled in a deliberate Layer 2 loop; default IEEE STP left enabled — the loop is intentional, STP is what makes it safe
+- Root bridge manually influenced via `spanning-tree vlan 1 priority 4096` on Switch1
+- OSPF process 100 running on all 3 routers; all WAN links and both site LANs advertised
+- Both site subnets reachable end-to-end via OSPF, with equal-cost paths across the router mesh
+
+### Faults Found & Fixed
+*Note: these two faults were injected deliberately to validate failover, not planted for someone else to find.*
+
+#### Incident INC-003: Switch Link Failure — STP Reconvergence
+| Field | Detail |
+|---|---|
+| Severity | Sev3 — planned failover test, redundant path available |
+| Symptoms | None expected for end hosts; Switch4's root port (Fa0/1, direct link to Switch1) shut down deliberately |
+| Diagnostic Steps | Baseline `show spanning-tree` confirmed Switch4's root port as Fa0/1, cost 19. After shutdown, root cost jumped to 38 and the previously-blocked Fa0/2 moved to Root LSN — STP re-selecting it as the new root port |
+| Root Cause | N/A — deliberate fault injection |
+| Resolution | Link restored (no shutdown) ~135 sec later; Fa0/1 reclaimed root port and Fa0/2 had already reverted to Altn BLK. Full "Fa0/2 = Forwarding" state wasn't directly captured, but the 135 sec gap exceeds the default ~30 sec convergence window (2×15 sec Forward Delay), so it's inferred rather than confirmed |
+| Prevention | Default STP convergence (~30 sec) is slow for production — recommend Rapid PVST+ (802.1w) for sub-second failover. Also: capture `show spanning-tree` right before restoring a failed link, not just after breaking it |
+
+Full ticket: [tickets/INC-003.md](tickets/INC-003.md)
+
+#### Incident INC-004: Router Link Failure — OSPF Reroute
+| Field | Detail |
+|---|---|
+| Severity | Sev3 — planned failover test, backup path available (full mesh) |
+| Symptoms | None expected for end-to-end reachability; Router3's direct link to Router4 (10.254.1.0/30) shut down deliberately |
+| Diagnostic Steps | `%OSPF-5-ADJCHG ... FULL to DOWN` logged immediately on both routers. `show ip ospf neighbor` confirmed only the Router1 adjacency remained on each side. `show ip route` showed the direct-cost-2 path replaced by a cost-3 path via Router1 |
+| Root Cause | N/A — deliberate fault injection |
+| Resolution | No manual action needed — OSPF automatically recalculated and installed the surviving path via Router1, with no loss of reachability between sites |
+| Time to Recover | Under 35 sec — fault logged at elapsed ~25:08:30; by ~25:09:05 Router4 already showed a live FULL/BDR adjacency with an active dead-timer over the backup path |
+| Prevention | The full 3-router mesh is what made this a non-event — a single-homed WAN design would have made Site B fully unreachable instead |
+
+Full ticket: [tickets/INC-004.md](tickets/INC-004.md)
+
+### Verification Checklist
+- [x] Only one path active between switches at a time (confirmed via `show spanning-tree`)
+- [x] Manual root election confirmed: priority change on Switch1 moved both root bridge and blocked port
+- [x] STP reconverges after a link failure — Listening-state transition observed directly; full Forwarding inferred from timing, not directly captured (see INC-003)
+- [x] OSPF neighbors form FULL adjacency across all 3 routers, including ECMP paths
+- [x] OSPF reroutes automatically in under 35 sec after a router link failure, no loss of reachability
+- [x] Both faults documented with before/after CLI evidence
 
 ### Scenario
 To eliminate single points of failure, the office network expanded to a 3-switch redundant core/access triangle connected to a secondary site via a dual-router OSPF WAN backbone. The goal is to enforce loop-free Layer 2 topology while enabling dynamic Layer 3 routing and verifying sub-second to low-second failover behavior.
-
-
 
 
 
