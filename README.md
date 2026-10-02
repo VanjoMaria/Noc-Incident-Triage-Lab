@@ -163,12 +163,6 @@ Full ticket: [tickets/INC-004.md](tickets/INC-004.md)
 - [x] OSPF reroutes automatically in under 35 sec after a router link failure, no loss of reachability
 - [x] Both faults documented with before/after CLI evidence
 
-### Scenario
-To eliminate single points of failure, the office network expanded to a 3-switch redundant core/access triangle connected to a secondary site via a dual-router OSPF WAN backbone. The goal is to enforce loop-free Layer 2 topology while enabling dynamic Layer 3 routing and verifying sub-second to low-second failover behavior.
-
-## Tools Used
-- Cisco Packet Tracer
-
 ## Repo Structure
 ```
 /screenshots
