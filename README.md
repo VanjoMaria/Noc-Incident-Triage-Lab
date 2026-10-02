@@ -1,6 +1,6 @@
 # NOC Incident Triage & Network Design Lab
 
-Hands-on network engineering labs built to simulate real Tier 1 NOC scenarios — VLAN segmentation, inter-VLAN routing, DHCP, ACL-based security, redundancy (STP), dynamic routing (OSPF), NAT, and proactive monitoring (Zabbix). Each lab includes deliberately injected faults, diagnosed and documented using real incident ticket format.
+Hands-on network engineering labs built to simulate real Tier 1 NOC scenarios — VLAN segmentation, inter-VLAN routing, DHCP, ACL-based security, redundancy (STP) and dynamic routing (OSPF). Each lab includes deliberately injected faults, diagnosed and documented using real incident ticket format.
 
 Built in Cisco Packet Tracer.
 
@@ -166,17 +166,8 @@ Full ticket: [tickets/INC-004.md](tickets/INC-004.md)
 ### Scenario
 To eliminate single points of failure, the office network expanded to a 3-switch redundant core/access triangle connected to a secondary site via a dual-router OSPF WAN backbone. The goal is to enforce loop-free Layer 2 topology while enabling dynamic Layer 3 routing and verifying sub-second to low-second failover behavior.
 
-
-
-
-
-## Lab 4: Full Incident Response Simulation *(planned)*
-
----
-
 ## Tools Used
 - Cisco Packet Tracer
-- Zabbix *(Lab 4)*
 
 ## Repo Structure
 ```
